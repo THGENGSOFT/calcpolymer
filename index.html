@@ -531,7 +531,7 @@
         });
     }
 
-    // Gerar Pedido WhatsApp
+// Gerar Pedido WhatsApp (Versão Segura sem Emojis Quebrados)
     function generateWhatsApp() {
         if (Object.keys(cart).length === 0) {
             alert("O carrinho está vazio!");
@@ -539,10 +539,12 @@
         }
 
         const today = new Date().toLocaleDateString('pt-BR');
+        
+        // Cabeçalho Limpo
         let message = `*PEDIDO MMB - ${today}*\n`;
         message += `----------------------------------\n`;
         
-        // Agrupar por categoria para o texto
+        // Agrupar por categoria
         const itemsByCat = {};
         Object.values(cart).forEach(item => {
             if(!itemsByCat[item.category]) itemsByCat[item.category] = [];
@@ -550,20 +552,34 @@
         });
 
         for(const [cat, items] of Object.entries(itemsByCat)) {
-            message += `\n📂 *${cat}*\n`;
+            // Categoria em Negrito e Maiúscula
+            message += `\n*${cat.toUpperCase()}*\n`; 
+            
             items.forEach(item => {
                 // Cálculo de unidades totais
                 const totalUnits = item.qty * item.emb;
                 
-                // Formatação
+                // Formatação Numérica
                 const totalItem = item.totalFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 const priceUnit = item.price.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 
-                message += `▪️ [${item.ref}] ${item.desc}\n`;
-                // Exibe: XX Unidades x R$ Preço
+                // Layout do item com traço simples (-)
+                message += `- [${item.ref}] ${item.desc}\n`;
                 message += `   ${totalUnits} Unid. x R$ ${priceUnit} = *R$ ${totalItem}*\n`;
             });
         }
+
+        const totalGeral = document.getElementById('grand-total-final').innerText;
+        
+        // Rodapé destacado com texto simples
+        message += `\n==================================\n`;
+        message += `*TOTAL GERAL: ${totalGeral}*`;
+        message += `\n==================================`;
+        
+        // Codificação segura para URL
+        const encodedMsg = encodeURIComponent(message);
+        window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
+    }
 
         const totalGeral = document.getElementById('grand-total-final').innerText;
         message += `\n----------------------------------\n`;
