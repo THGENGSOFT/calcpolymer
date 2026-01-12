@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tabela Geral Pollymer</title>
+    <title>Calculadora de Pedidos MMB - Tabela Geral Pollymer</title>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -35,18 +35,67 @@
         .category-subtotal { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 4px; font-size: 0.9em; }
 
         .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; } /* Min-width garante layout correto no scroll */
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
         
-        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
+        th, td { padding: 10px; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
         th { background-color: #f8f9fa; color: #555; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
         
         /* Colunas */
+        .col-img { width: 60px; text-align: center; }
         .col-ref { width: 80px; text-align: center; color: #777; font-size: 0.9em; }
         .col-desc { font-weight: 500; }
         .col-emb, .col-ipi { text-align: center; color: #777; font-size: 0.9em; width: 60px; }
         .col-price { text-align: right; width: 100px; font-weight: 600; }
         .col-qty { text-align: center; width: 110px; }
         .col-total { text-align: right; width: 120px; font-weight: bold; color: var(--success-color); }
+
+        /* Imagens e Zoom */
+        .product-thumb { 
+            width: 50px; 
+            height: 50px; 
+            object-fit: cover; 
+            border-radius: 4px; 
+            cursor: zoom-in; 
+            border: 1px solid #ddd;
+            background-color: #fff;
+            transition: transform 0.2s;
+        }
+        .product-thumb:hover { transform: scale(1.1); }
+
+        /* Modal de Zoom */
+        .image-modal {
+            display: none; 
+            position: fixed; 
+            z-index: 9999; 
+            left: 0; top: 0; 
+            width: 100%; height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.9); 
+            animation: fadeIn 0.3s;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .close-modal:hover { color: #bbb; }
+
+        @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
 
         /* Inputs e Estados */
         input[type="number"] { width: 70px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-size: 1.1em; transition: all 0.2s; }
@@ -75,11 +124,15 @@
             .totals-group { gap: 10px; }
             .total-item strong { font-size: 1rem; }
             #grand-total-final { font-size: 1.1rem; }
-            .col-ipi, .col-emb, .col-ref { display: none; } /* Ocultar colunas menos criticas no mobile */
-            .btn-whatsapp span { display: none; } /* Só ícone no mobile se apertado */
+            .col-ipi, .col-emb, .col-ref { display: none; }
+            .btn-whatsapp span { display: none; }
             .btn-whatsapp::after { content: " Enviar"; }
             h1 { font-size: 1.2rem; }
             .category-header { font-size: 0.95rem; }
+            
+            /* Ajuste imagens mobile */
+            .col-img { width: 50px; }
+            .product-thumb { width: 40px; height: 40px; }
         }
     </style>
 </head>
@@ -87,7 +140,7 @@
 
 <header>
     <div class="header-content">
-        <h1>Tabela Geral Pollymer</h1>
+        <h1>Calculadora de Pedidos MMB 📊</h1>
         <div class="controls">
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="🔍 Buscar produto (nome ou ref)..." onkeyup="filterProducts()">
@@ -99,6 +152,11 @@
 
 <div class="container" id="app">
     </div>
+
+<div id="imageModal" class="image-modal" onclick="closeImage()">
+    <span class="close-modal">&times;</span>
+    <img class="modal-content" id="img01">
+</div>
 
 <div class="total-bar">
     <div class="totals-group">
@@ -251,6 +309,35 @@
         { cat: "SOS", ref: "8014", desc: "Estojo Multiuso S.O.S Pequeno - Transparente", emb: 12, ipi: 0.065, price: 9.18 }
     ];
 
+    // --- MAPA DE IMAGENS ---
+    // Mapeia "Referência-Normalizada" para "Nome-do-Arquivo-Real"
+    const imageMap = {
+        "1002-12": "1002-12.jpeg", "1002-52": "1002-52.jpeg", "1006-11": "1006-11.jpeg", "1006-41": "1006-41.jpeg",
+        "1006-151": "1006-151.jpeg", "1010": "1010.jpeg", "1011": "1011.jpeg", "1012": "1012.jpeg", "1013": "1013.jpeg",
+        "1023": "1023.jpeg", "1024": "1024.jpeg", "1025": "1025.jpeg", "1033-48": "1033-48.jpeg", "1033-72": "1033-72.jpeg",
+        "1038": "1038.jpeg", "2100": "2100.jpeg", "2102": "2102.jpeg", "2103": "2103.jpeg", "2104": "2104.jpeg",
+        "2105": "2105.jpeg", "2106": "2106.jpeg", "2107": "2107.png", "2139": "2139.jpeg", "2140": "2140.jpeg",
+        "2141": "2141.jpeg", "2142": "2142.jpeg", "2143": "2143.jpeg", "2144": "2144.jpeg", "2145": "2145.jpeg",
+        "2146": "2146.jpeg", "2147": "2147.jpeg", "2148": "2148.jpeg", "2149": "2149.jpeg", "2150": "2150.jpg",
+        "2151": "2151.jpeg", "2152": "2152.jpg", "2513": "2513.jpeg", "2601": "2601.jpeg", "2602": "2602.jpeg",
+        "2701": "2701.jpeg", "2702": "2702.jpeg", "2703": "2703.jpeg", "2750": "2750.jpeg", "2751": "2751.jpeg",
+        "2752": "2752.jpeg", "2753": "2753.jpeg", "2754": "2754.jpeg", "2755": "2755.jpeg", "2802": "2802.jpg",
+        "3901": "3901.jpeg", "3905": "3905.jpeg", "3907": "3907.jpeg", "3952": "3952.jpg", "3953": "3953.jpg",
+        "3954": "3954.jpeg", "3955": "3955.jpeg", "3956": "3956.jpeg", "3957": "3957.jpeg", "3958": "3958.jpg",
+        "3959": "3959.jpg", "3960": "3960.jpg", "4000": "4000.jpeg", "4001": "4001.jpg", "4002": "4002.jpeg",
+        "4003": "4003.jpg", "4013": "4013.jpeg", "4016": "4016.jpeg", "4017": "4017.jpeg", "4019": "4019.jpeg",
+        "4020": "4020.jpeg", "4029": "4029.jpeg", "4030": "4030.jpeg", "4033": "4033.jpeg", "4035": "4035.jpeg",
+        "4037": "4037.jpeg", "4038": "4038.jpg", "4039": "4039.jpeg", "4042": "4042.jpg", "4043": "4043.jpg",
+        "4044": "4044.jpeg", "4045": "4045.jpg", "4046": "4046.jpeg", "4047": "4047.jpeg", "4048": "4048.jpg",
+        "4049": "4049.jpg", "4050": "4050.jpeg", "4051": "4051.jpg", "4052": "4052.jpg", "4054": "4054.jpeg",
+        "4055": "4055.jpg", "4056": "4056.jpeg", "4057": "4057.jpg", "4058": "4058.jpg", "4059": "4059.jpeg",
+        "4060": "4060.jpeg", "4061": "4061.jpeg", "4063": "4063.jpeg", "4065": "4065.jpg", "4066": "4066.jpg",
+        "4067": "4067.jpg", "4068": "4068.jpg", "4069": "4069.jpg", "4070": "4070.jpg", "4071": "4071.jpg",
+        "6007": "6007.jpeg", "6009": "6009.jpeg", "6011": "6011.jpeg", "8001": "8001.jpeg", "8002": "8002.jpg",
+        "8003": "8003.jpg", "8004": "8004.jpeg", "8011": "8011.jpg", "8012": "8012.jpeg", "8013": "8013.jpeg",
+        "8014": "8014.jpg"
+    };
+
     // --- LÓGICA DO SISTEMA ---
     
     // Função utilitária para moeda
@@ -269,6 +356,25 @@
     const groups = groupBy(rawData, 'cat');
     let cart = {}; // Armazena o pedido
 
+    // Funções de Imagem
+    function getImagePath(ref) {
+        const normalizedRef = ref.replace('/', '-'); // Troca 1002/12 por 1002-12
+        const filename = imageMap[normalizedRef];
+        if (filename) {
+            return `assets/img/${filename}`;
+        }
+        return ''; // Retorna vazio se não tiver imagem
+    }
+
+    function openImage(element) {
+        document.getElementById("imageModal").style.display = "flex";
+        document.getElementById("img01").src = element.src;
+    }
+
+    function closeImage() {
+        document.getElementById("imageModal").style.display = "none";
+    }
+
     // Renderização Inicial
     function renderTable() {
         let html = '';
@@ -284,6 +390,7 @@
                              <table>
                                 <thead>
                                     <tr>
+                                        <th class="col-img">FOTO</th>
                                         <th class="col-ref">REF</th>
                                         <th class="col-desc">DESCRIÇÃO</th>
                                         <th class="col-emb">EMB</th>
@@ -298,8 +405,15 @@
             items.forEach((item, index) => {
                 const uniqueId = `${catId}-${index}`;
                 const ipiPercent = (item.ipi * 100).toFixed(2).replace('.', ',');
+                const imgPath = getImagePath(item.ref);
                 
+                // Se tiver imagem, mostra a tag img, senão mostra um placeholder ou nada
+                const imgTag = imgPath 
+                    ? `<img src="${imgPath}" class="product-thumb" onclick="openImage(this)" onerror="this.src='https://placehold.co/50x50?text=Indisp'; this.onerror=null;">`
+                    : `<span style="font-size:0.8em; color:#ccc;">S/ Foto</span>`;
+
                 html += `<tr id="row-${uniqueId}">
+                            <td class="col-img">${imgTag}</td>
                             <td class="col-ref">${item.ref}</td>
                             <td class="col-desc">${item.desc}</td>
                             <td class="col-emb">${item.emb}</td>
@@ -417,7 +531,7 @@
         });
     }
 
-    // Gerar Pedido WhatsApp (Aprimorado com Unidades)
+    // Gerar Pedido WhatsApp
     function generateWhatsApp() {
         if (Object.keys(cart).length === 0) {
             alert("O carrinho está vazio!");
