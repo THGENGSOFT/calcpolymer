@@ -417,14 +417,16 @@
         });
     }
 
-    // Gerar Pedido WhatsApp
+    // Gerar Pedido WhatsApp (Aprimorado)
     function generateWhatsApp() {
         if (Object.keys(cart).length === 0) {
             alert("O carrinho está vazio!");
             return;
         }
 
-        let message = "*PEDIDO MMB*\n------------------\n";
+        const today = new Date().toLocaleDateString('pt-BR');
+        let message = `*PEDIDO MMB - ${today}*\n`;
+        message += `----------------------------------\n`;
         
         // Agrupar por categoria para o texto
         const itemsByCat = {};
@@ -434,15 +436,21 @@
         });
 
         for(const [cat, items] of Object.entries(itemsByCat)) {
-            message += `\n*${cat}*\n`;
+            message += `\n📂 *${cat}*\n`;
             items.forEach(item => {
-                const totalItem = item.totalFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-                message += `• [${item.ref}] ${item.desc}\n   ${item.qty} fardos x R$ ${item.price.toFixed(2)} = R$ ${totalItem}\n`;
+                // Formatação forçada para 2 casas decimais
+                const totalItem = item.totalFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const priceUnit = item.price.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                message += `▪️ [${item.ref}] ${item.desc}\n`;
+                message += `   ${item.qty} fardos x R$ ${priceUnit} = *R$ ${totalItem}*\n`;
             });
         }
 
         const totalGeral = document.getElementById('grand-total-final').innerText;
-        message += `\n------------------\n*TOTAL GERAL: ${totalGeral}*`;
+        message += `\n----------------------------------\n`;
+        message += `💰 *TOTAL GERAL: ${totalGeral}*`;
+        message += `\n----------------------------------`;
         
         // Encode e abrir link
         const encodedMsg = encodeURIComponent(message);
@@ -468,4 +476,3 @@
 
 </body>
 </html>
-
