@@ -223,6 +223,8 @@ function renderTable() {
                 ? `<img src="${imgPath}" class="product-thumb" onclick="openImage(this)" onerror="this.src='https://placehold.co/50x50?text=Indisp'; this.onerror=null;">`
                 : `<span style="font-size:0.8em; color:#ccc;">S/ Foto</span>`;
 
+            // CORREÇÃO CRÍTICA AQUI: .replace(/"/g, "&quot;")
+            // Isso previne que as aspas de polegadas (") quebrem o HTML do input
             html += `<tr id="row-${uniqueId}">
                         <td class="col-img">${imgTag}</td>
                         <td class="col-ref">${item.ref}</td>
@@ -232,7 +234,7 @@ function renderTable() {
                         <td class="col-price">${formatCurrency(item.price)}</td>
                         <td class="col-qty">
                             <input type="number" min="0" 
-                                   oninput="updateItem(this, ${item.price}, ${item.emb}, ${item.ipi}, '${uniqueId}', '${category}', '${item.ref}', '${item.desc.replace(/'/g, "\\'")}')" 
+                                   oninput="updateItem(this, ${item.price}, ${item.emb}, ${item.ipi}, '${uniqueId}', '${category}', '${item.ref}', '${item.desc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" 
                                    placeholder="0" id="input-${uniqueId}">
                         </td>
                         <td class="col-total" id="total-${uniqueId}">R$ 0,00</td>
@@ -295,7 +297,6 @@ function recalculateTotals() {
     document.getElementById('grand-total-final').innerText = formatCurrency(grandFinal);
 
     // Atualiza Totais da IMPRESSÃO (PDF)
-    // Se o elemento não existir ainda (no primeiro carregamento), evita erro
     if(document.getElementById('print-total-products')) {
         document.getElementById('print-total-products').innerText = formatCurrency(grandBase);
         document.getElementById('print-total-ipi').innerText = formatCurrency(grandIPI);
@@ -375,21 +376,17 @@ function generateWhatsApp() {
 
 // NOVA FUNÇÃO: IMPRIMIR / PDF
 function printOrder() {
-    // 1. Verifica se tem algo no carrinho
     if (Object.keys(cart).length === 0) {
         if(!confirm("O carrinho está vazio. Deseja imprimir o catálogo em branco?")) {
             return;
         }
     }
 
-    // 2. Atualiza a data do cabeçalho de impressão
     document.getElementById('print-date').innerText = `Data: ${new Date().toLocaleDateString('pt-BR')}`;
 
-    // 3. Prepara visualização (esconde categorias vazias na impressão)
     const blocks = document.querySelectorAll('.category-block');
     blocks.forEach(block => {
         const hasActiveRow = block.querySelector('.active-row');
-        // Se tiver item selecionado, marca como 'has-items' para o CSS mostrar
         if (hasActiveRow) {
             block.classList.add('has-items');
         } else {
@@ -397,13 +394,9 @@ function printOrder() {
         }
     });
 
-    // 4. Adiciona classe global para o CSS saber que estamos imprimindo (limpa layout)
     document.body.classList.add('printing-clean');
-
-    // 5. Abre a janela nativa do sistema
     window.print();
 
-    // 6. Restaura a visão normal após o usuário fechar a janela de print
     setTimeout(() => {
         document.body.classList.remove('printing-clean');
     }, 500);
