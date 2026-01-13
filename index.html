@@ -21,8 +21,28 @@
     </div>
 </header>
 
+<div class="print-header">
+    <h2>MMB REPRESENTAÇÕES - Pedido de Venda</h2>
+    <p id="print-date">Data: --/--/----</p>
+</div>
+
 <div class="container" id="app">
     </div>
+
+<div class="print-summary">
+    <div class="print-row">
+        <span>Total Produtos:</span>
+        <strong id="print-total-products">R$ 0,00</strong>
+    </div>
+    <div class="print-row">
+        <span>Total IPI:</span>
+        <strong id="print-total-ipi">R$ 0,00</strong>
+    </div>
+    <div class="print-row big">
+        <span>TOTAL GERAL:</span>
+        <strong id="print-total-final">R$ 0,00</strong>
+    </div>
+</div>
 
 <div id="imageModal" class="image-modal" onclick="closeImage()">
     <span class="close-modal">&times;</span>
@@ -45,6 +65,9 @@
         </div>
     </div>
     <div class="action-group">
+        <button class="btn-print" onclick="printOrder()">
+            🖨️ <span class="mobile-hide">Imprimir / PDF</span>
+        </button>
         <button class="btn-whatsapp" onclick="generateWhatsApp()">
             📱 <span>Gerar Pedido</span>
         </button>

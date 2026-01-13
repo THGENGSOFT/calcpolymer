@@ -20,6 +20,9 @@ h1 { margin: 0; color: var(--primary-color); font-size: 1.5rem; text-align: cent
 .btn-reset { padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .btn-reset:hover { background-color: #c0392b; }
 
+/* Elementos de Impressão (Ocultos na tela normal) */
+.print-header, .print-summary { display: none; }
+
 /* Tabela e Layout */
 .container { max-width: 1200px; margin: 20px auto; background: #fff; padding: 0; box-shadow: 0 0 15px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
 
@@ -44,50 +47,19 @@ th { background-color: #f8f9fa; color: #555; font-weight: 600; font-size: 0.85re
 
 /* Imagens e Zoom */
 .product-thumb { 
-    width: 50px; 
-    height: 50px; 
-    object-fit: cover; 
-    border-radius: 4px; 
-    cursor: zoom-in; 
-    border: 1px solid #ddd;
-    background-color: #fff;
-    transition: transform 0.2s;
+    width: 50px; height: 50px; object-fit: cover; border-radius: 4px; 
+    cursor: zoom-in; border: 1px solid #ddd; background-color: #fff; transition: transform 0.2s;
 }
 .product-thumb:hover { transform: scale(1.1); }
 
-/* Modal de Zoom */
 .image-modal {
-    display: none; 
-    position: fixed; 
-    z-index: 9999; 
-    left: 0; top: 0; 
-    width: 100%; height: 100%; 
-    overflow: auto; 
-    background-color: rgba(0,0,0,0.9); 
-    animation: fadeIn 0.3s;
-    justify-content: center;
-    align-items: center;
+    display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; 
+    overflow: auto; background-color: rgba(0,0,0,0.9); animation: fadeIn 0.3s;
+    justify-content: center; align-items: center;
 }
-.modal-content {
-    margin: auto;
-    display: block;
-    max-width: 90%;
-    max-height: 90vh;
-    border-radius: 5px;
-    box-shadow: 0 0 20px rgba(255,255,255,0.2);
-}
-.close-modal {
-    position: absolute;
-    top: 20px;
-    right: 35px;
-    color: #f1f1f1;
-    font-size: 40px;
-    font-weight: bold;
-    transition: 0.3s;
-    cursor: pointer;
-}
+.modal-content { margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 5px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+.close-modal { position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; transition: 0.3s; cursor: pointer; }
 .close-modal:hover { color: #bbb; }
-
 @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
 
 /* Inputs e Estados */
@@ -100,7 +72,6 @@ tr:hover { background-color: #fafafa; }
 
 /* Barra de Totais Fixa (Footer) */
 .total-bar { position: fixed; bottom: 0; left: 0; right: 0; background-color: #fff; padding: 15px 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-top: 1px solid #eee; }
-
 .totals-group { display: flex; gap: 30px; }
 .total-item { display: flex; flex-direction: column; }
 .total-item span { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -111,19 +82,64 @@ tr:hover { background-color: #fafafa; }
 .btn-whatsapp { background-color: #25D366; color: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(37, 211, 102, 0.2); transition: transform 0.1s; }
 .btn-whatsapp:active { transform: scale(0.98); }
 
-/* Mobile */
+/* Botão de Imprimir */
+.btn-print { background-color: #34495e; color: white; padding: 10px 20px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.btn-print:hover { background-color: #2c3e50; }
+
+/* Mobile e Ajustes */
 @media (max-width: 768px) {
     .controls { flex-direction: column; }
     .totals-group { gap: 10px; }
     .total-item strong { font-size: 1rem; }
     #grand-total-final { font-size: 1.1rem; }
     .col-ipi, .col-emb, .col-ref { display: none; }
-    .btn-whatsapp span { display: none; }
+    .btn-whatsapp span, .btn-print span.mobile-hide { display: none; }
     .btn-whatsapp::after { content: " Enviar"; }
     h1 { font-size: 1.2rem; }
     .category-header { font-size: 0.95rem; }
-    
-    /* Ajuste imagens mobile */
     .col-img { width: 50px; }
     .product-thumb { width: 40px; height: 40px; }
+}
+
+/* =========================================
+   ESTILOS DE IMPRESSÃO (PDF / PAPEL)
+   ========================================= */
+@media print {
+    /* Ocultar elementos da interface */
+    header, .total-bar, .image-modal, .controls, .btn-whatsapp { display: none !important; }
+    
+    body { background-color: white; padding: 0; margin: 0; font-size: 12px; }
+    .container { box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
+    
+    /* Mostrar Cabeçalho de Impressão */
+    .print-header { display: block; text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #333; }
+    .print-header h2 { margin: 0 0 5px 0; color: #000; }
+    
+    /* Ajustes da Tabela */
+    table { min-width: 100%; border: 1px solid #000; font-size: 11px; }
+    th { background-color: #ddd !important; color: #000 !important; border: 1px solid #000; -webkit-print-color-adjust: exact; }
+    td { border: 1px solid #000; padding: 5px; }
+    
+    /* Cores e Destaques */
+    tr.active-row { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; font-weight: bold; }
+    .col-total { color: #000 !important; }
+    
+    /* Inputs como Texto */
+    input[type="number"] { border: none; background: transparent; text-align: center; font-weight: bold; width: auto; padding: 0; }
+    
+    /* Ocultar Categorias Vazias (Se o modo de impressão limpa estiver ativo) */
+    body.printing-clean .category-block { display: none; }
+    body.printing-clean .category-block.has-items { display: block; }
+    body.printing-clean tr:not(.active-row) { display: none; }
+    
+    /* Rodapé de Totais na Impressão */
+    .print-summary { display: block; margin-top: 20px; float: right; width: 300px; border: 1px solid #000; padding: 10px; page-break-inside: avoid; }
+    .print-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .print-row.big { border-top: 1px solid #000; padding-top: 5px; font-size: 1.2em; margin-top: 5px; }
+    
+    /* Ocultar imagens na impressão para economizar tinta (opcional, pode remover se quiser fotos) */
+    .col-img, .product-thumb { display: none; } 
+    /* Ajustar largura sem imagem */
+    .col-ref { width: 10%; }
+    .col-desc { width: 40%; }
 }
