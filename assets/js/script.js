@@ -259,18 +259,40 @@ function updateItem(uniqueId, category, ref, desc) {
     const input = document.getElementById(`input-${uniqueId}`);
     const qty = parseInt(input.value) || 0;
     
+    // Recupera dados estáticos
     const basePrice = parseFloat(row.getAttribute('data-price'));
     const emb = parseInt(row.getAttribute('data-emb'));
     const ipi = parseFloat(row.getAttribute('data-ipi'));
 
     if (qty > 0) {
+        // --- SE TIVER QUANTIDADE ---
         row.classList.add('active-row');
         cart[uniqueId] = { ref, desc, qty, basePrice, emb, ipi, category };
     } else {
+        // --- SE FOR ZERO OU VAZIO (A CORREÇÃO ESTÁ AQUI) ---
         row.classList.remove('active-row');
         delete cart[uniqueId];
+
+        // 1. Força visualmente o Total da Linha para R$ 0,00
+        const totalCell = document.getElementById(`total-${uniqueId}`);
+        if(totalCell) totalCell.innerText = 'R$ 0,00';
+
+        // 2. Força visualmente o Total de Unidades para 0 (Se a coluna existir)
+        const unitCell = document.getElementById(`units-${uniqueId}`);
+        if(unitCell) unitCell.innerText = '0';
+
+        // 3. Reseta a cor do preço unitário (remove o verde/riscado)
+        const oldPriceEl = document.getElementById(`old-price-${uniqueId}`);
+        const newPriceEl = document.getElementById(`new-price-${uniqueId}`);
+        if(oldPriceEl && newPriceEl) {
+            oldPriceEl.classList.remove('visible');
+            newPriceEl.classList.remove('discounted');
+            // Volta a mostrar o preço original sem desconto
+            newPriceEl.innerText = formatCurrency(basePrice);
+        }
     }
 
+    // Recalcula o rodapé global
     recalculateTotals();
 }
 
