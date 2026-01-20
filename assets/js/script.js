@@ -1,4 +1,4 @@
-// --- DADOS DO SISTEMA ---
+// --- DADOS DA POLLYMER ---
 const rawData = [
     // UTILIDADES DOMÉSTICAS
     { cat: "UTILIDADES DOMÉSTICAS", ref: "1002/12", desc: "Cabide de Roupa Prático Infantil 1 unid - Cor", emb: 60, ipi: 0.065, price: 1.18 },
@@ -169,12 +169,13 @@ const app = document.getElementById('app');
 const groups = groupBy(rawData, 'cat');
 let cart = {};
 
+// Variável para controle global do desconto
+let currentDiscountPercent = 0;
+
 function getImagePath(ref) {
     const normalizedRef = ref.replace('/', '-');
     const filename = imageMap[normalizedRef];
-    if (filename) {
-        return `assets/img/${filename}`;
-    }
+    if (filename) return `assets/img/${filename}`;
     return '';
 }
 
@@ -192,7 +193,6 @@ function renderTable() {
     
     for (const [category, items] of Object.entries(groups)) {
         const catId = category.replace(/\s/g, '-');
-        // Adicionei id="block-..." para controlar a visibilidade na impressão
         html += `<div class="category-block" id="block-${catId}">
                     <div class="category-header" onclick="toggleCategory('${catId}')">
                         <span>${category}</span>
@@ -209,6 +209,7 @@ function renderTable() {
                                     <th class="col-ipi">IPI</th>
                                     <th class="col-price">PREÇO UN</th>
                                     <th class="col-qty">FARDOS</th>
+                                    <th class="col-total-units">TOTAL UNID</th>
                                     <th class="col-total">TOTAL+IPI</th>
                                 </tr>
                             </thead>
@@ -223,20 +224,25 @@ function renderTable() {
                 ? `<img src="${imgPath}" class="product-thumb" onclick="openImage(this)" onerror="this.src='https://placehold.co/50x50?text=Indisp'; this.onerror=null;">`
                 : `<span style="font-size:0.8em; color:#ccc;">S/ Foto</span>`;
 
-            // CORREÇÃO CRÍTICA AQUI: .replace(/"/g, "&quot;")
-            // Isso previne que as aspas de polegadas (") quebrem o HTML do input
-            html += `<tr id="row-${uniqueId}">
+            // Adicionado data-price para cálculo dinâmico
+            html += `<tr id="row-${uniqueId}" data-price="${item.price}" data-emb="${item.emb}" data-ipi="${item.ipi}">
                         <td class="col-img">${imgTag}</td>
                         <td class="col-ref">${item.ref}</td>
                         <td class="col-desc">${item.desc}</td>
                         <td class="col-emb">${item.emb}</td>
                         <td class="col-ipi">${ipiPercent}%</td>
-                        <td class="col-price">${formatCurrency(item.price)}</td>
+                        <td class="col-price">
+                            <div class="price-container">
+                                <span class="old-price" id="old-price-${uniqueId}">${formatCurrency(item.price)}</span>
+                                <span class="new-price" id="new-price-${uniqueId}">${formatCurrency(item.price)}</span>
+                            </div>
+                        </td>
                         <td class="col-qty">
                             <input type="number" min="0" 
-                                   oninput="updateItem(this, ${item.price}, ${item.emb}, ${item.ipi}, '${uniqueId}', '${category}', '${item.ref}', '${item.desc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" 
+                                   oninput="updateItem('${uniqueId}', '${category.replace(/'/g, "\\'")}', '${item.ref}', '${item.desc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" 
                                    placeholder="0" id="input-${uniqueId}">
                         </td>
+                        <td class="col-total-units" id="units-${uniqueId}">0</td>
                         <td class="col-total" id="total-${uniqueId}">R$ 0,00</td>
                      </tr>`;
         });
@@ -248,62 +254,98 @@ function renderTable() {
 
 renderTable();
 
-function updateItem(input, price, emb, ipi, uniqueId, category, ref, desc) {
-    const qty = parseInt(input.value) || 0;
+function updateItem(uniqueId, category, ref, desc) {
     const row = document.getElementById(`row-${uniqueId}`);
+    const input = document.getElementById(`input-${uniqueId}`);
+    const qty = parseInt(input.value) || 0;
     
+    const basePrice = parseFloat(row.getAttribute('data-price'));
+    const emb = parseInt(row.getAttribute('data-emb'));
+    const ipi = parseFloat(row.getAttribute('data-ipi'));
+
     if (qty > 0) {
         row.classList.add('active-row');
+        cart[uniqueId] = { ref, desc, qty, basePrice, emb, ipi, category };
     } else {
         row.classList.remove('active-row');
-    }
-
-    const totalBase = price * emb * qty;
-    const totalIPI = totalBase * ipi;
-    const totalFinal = totalBase + totalIPI;
-
-    if (qty > 0) {
-        cart[uniqueId] = {
-            ref, desc, qty, price, emb, ipi,
-            totalBase, totalIPI, totalFinal,
-            category
-        };
-    } else {
         delete cart[uniqueId];
     }
 
-    document.getElementById(`total-${uniqueId}`).innerText = totalFinal > 0 ? formatCurrency(totalFinal) : 'R$ 0,00';
     recalculateTotals();
 }
 
 function recalculateTotals() {
+    // 1. Calcula TOTAL BRUTO (Sem Desconto) para definir a faixa
+    let grandFinalWithoutDiscount = 0;
+    
+    // Primeiro loop apenas para saber o total bruto
+    Object.values(cart).forEach(item => {
+        const lineTotal = item.basePrice * item.emb * item.qty;
+        grandFinalWithoutDiscount += lineTotal;
+    });
+
+    // 2. Define Porcentagem de Desconto (Baseado em R$)
+    if (grandFinalWithoutDiscount > 10000) currentDiscountPercent = 0.20;
+    else if (grandFinalWithoutDiscount > 6000) currentDiscountPercent = 0.15;
+    else if (grandFinalWithoutDiscount > 3000) currentDiscountPercent = 0.07;
+    else currentDiscountPercent = 0;
+
+    // CORREÇÃO: .toFixed(0) para remover as casas decimais extras
+    document.getElementById('current-discount-display').innerText = (currentDiscountPercent * 100).toFixed(0) + "%";
+    
+    // Cor do total muda se não atingir o mínimo
+    const totalDisplay = document.getElementById('grand-total-products');
+    if (grandFinalWithoutDiscount < 1600) {
+        totalDisplay.style.color = '#e74c3c';
+    } else {
+        totalDisplay.style.color = 'var(--primary-color)';
+    }
+
     let grandBase = 0;
     let grandIPI = 0;
     let grandFinal = 0;
     const catSubtotals = {};
 
-    Object.values(cart).forEach(item => {
-        grandBase += item.totalBase;
-        grandIPI += item.totalIPI;
-        grandFinal += item.totalFinal;
+    // 3. Recalcula valores de TODAS as linhas com o novo desconto
+    Object.keys(cart).forEach(uniqueId => {
+        const item = cart[uniqueId];
+        
+        // Aplica desconto no preço unitário
+        const discountedPrice = item.basePrice * (1 - currentDiscountPercent);
+        
+        // Cálculos da Linha
+        const totalBase = discountedPrice * item.emb * item.qty;
+        const totalIPI = totalBase * item.ipi;
+        const totalLine = totalBase + totalIPI;
+        const totalUnits = item.emb * item.qty;
+
+        item.finalPrice = discountedPrice;
+        item.finalTotal = totalLine;
+
+        updateRowVisuals(uniqueId, item.basePrice, discountedPrice, totalLine, totalUnits);
+
+        grandBase += totalBase;
+        grandIPI += totalIPI;
+        grandFinal += totalLine;
 
         if (!catSubtotals[item.category]) catSubtotals[item.category] = 0;
-        catSubtotals[item.category] += item.totalFinal;
+        catSubtotals[item.category] += totalLine;
     });
 
-    // Atualiza Totais da Tela
-    document.getElementById('grand-total-products').innerText = formatCurrency(grandBase);
-    document.getElementById('grand-total-ipi').innerText = formatCurrency(grandIPI);
-    document.getElementById('grand-total-final').innerText = formatCurrency(grandFinal);
+    // 4. Atualiza Interface Global
+    document.getElementById('grand-total-products').innerText = formatCurrency(grandFinalWithoutDiscount); // Mostra Bruto na esquerda
+    document.getElementById('grand-total-final').innerText = formatCurrency(grandFinal); // Mostra Líquido na direita
 
-    // Atualiza Totais da IMPRESSÃO (PDF)
+    // Atualiza Totais da IMPRESSÃO
     if(document.getElementById('print-total-products')) {
         document.getElementById('print-total-products').innerText = formatCurrency(grandBase);
+        // CORREÇÃO: .toFixed(0) para o print também
+        document.getElementById('print-discount-applied').innerText = (currentDiscountPercent * 100).toFixed(0) + "%";
         document.getElementById('print-total-ipi').innerText = formatCurrency(grandIPI);
         document.getElementById('print-total-final').innerText = formatCurrency(grandFinal);
     }
 
-    // Atualiza Subtotais das Categorias
+    // Atualiza Subtotais
     document.querySelectorAll('.category-subtotal').forEach(el => {
         const catId = el.id.replace('subtotal-', '').replace(/-/g, ' '); 
         const matchingCat = Object.keys(catSubtotals).find(key => key.replace(/\s/g, '-') === el.id.replace('subtotal-', ''));
@@ -312,12 +354,34 @@ function recalculateTotals() {
     });
 }
 
+function updateRowVisuals(uniqueId, basePrice, newPrice, totalLine, totalUnits) {
+    const oldPriceEl = document.getElementById(`old-price-${uniqueId}`);
+    const newPriceEl = document.getElementById(`new-price-${uniqueId}`);
+    
+    newPriceEl.innerText = formatCurrency(newPrice);
+    
+    if (currentDiscountPercent > 0) {
+        oldPriceEl.classList.add('visible');
+        newPriceEl.classList.add('discounted');
+    } else {
+        oldPriceEl.classList.remove('visible');
+        newPriceEl.classList.remove('discounted');
+    }
+
+    document.getElementById(`total-${uniqueId}`).innerText = formatCurrency(totalLine);
+    document.getElementById(`units-${uniqueId}`).innerText = totalUnits;
+}
+
 function filterProducts() {
     const term = document.getElementById('searchInput').value.toLowerCase();
     const rows = document.querySelectorAll('tbody tr');
 
     rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
+        // CORREÇÃO AQUI: Troquei 'innerText' por 'textContent'
+        // textContent consegue ler o código (REF) mesmo se a coluna estiver oculta no celular
+        const text = row.textContent.toLowerCase();
+        
+        // Mantém a busca também pelo valor que o usuário digitou no input (quantidade)
         const inputVal = row.querySelector('input').value;
         
         if (text.includes(term) || (inputVal && inputVal > 0)) {
@@ -327,8 +391,13 @@ function filterProducts() {
         }
     });
 
+    // Lógica para esconder categorias que ficaram vazias após o filtro
     document.querySelectorAll('.category-block').forEach(block => {
+        // Seleciona apenas linhas visíveis dentro desta categoria
         const visibleRows = block.querySelectorAll('tbody tr:not([style*="display: none"])');
+        
+        // Se o termo de busca for vazio, mostra tudo. 
+        // Se tiver termo, só mostra a categoria se tiver linhas visíveis dentro.
         if(term.length > 0) {
             block.style.display = visibleRows.length > 0 ? '' : 'none';
         } else {
@@ -343,8 +412,17 @@ function generateWhatsApp() {
         return;
     }
 
+    // TRAVA DE MÍNIMO (FINANCEIRO)
+    let totalBruto = 0;
+    Object.values(cart).forEach(item => totalBruto += (item.basePrice * item.emb * item.qty));
+
+    if (totalBruto < 1600) {
+        alert(`⚠️ PEDIDO MÍNIMO NÃO ATINGIDO!\n\nValor Atual: ${formatCurrency(totalBruto)}\nMínimo Exigido: R$ 1.600,00`);
+        return;
+    }
+
     const today = new Date().toLocaleDateString('pt-BR');
-    let message = `*PEDIDO MMB - ${today}*\n`;
+    let message = `*PEDIDO POLLYMER - ${today}*\n`;
     message += `----------------------------------\n`;
     
     const itemsByCat = {};
@@ -357,8 +435,8 @@ function generateWhatsApp() {
         message += `\n*${cat.toUpperCase()}*\n`; 
         items.forEach(item => {
             const totalUnits = item.qty * item.emb;
-            const totalItem = item.totalFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            const priceUnit = item.price.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const totalItem = item.finalTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const priceUnit = item.finalPrice.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
             message += `- [${item.ref}] ${item.desc}\n`;
             message += `   ${totalUnits} Unid. x R$ ${priceUnit} = *R$ ${totalItem}*\n`;
@@ -366,7 +444,11 @@ function generateWhatsApp() {
     }
 
     const totalGeral = document.getElementById('grand-total-final').innerText;
+    // CORREÇÃO: .toFixed(0) para o WhatsApp também
+    const descPerc = (currentDiscountPercent * 100).toFixed(0) + "%";
+    
     message += `\n==================================\n`;
+    message += `*DESCONTO APLICADO: ${descPerc}*\n`;
     message += `*TOTAL GERAL: ${totalGeral}*`;
     message += `\n==================================`;
     
@@ -374,10 +456,18 @@ function generateWhatsApp() {
     window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
 }
 
-// NOVA FUNÇÃO: IMPRIMIR / PDF
 function printOrder() {
     if (Object.keys(cart).length === 0) {
         if(!confirm("O carrinho está vazio. Deseja imprimir o catálogo em branco?")) {
+            return;
+        }
+    } else {
+        // TRAVA MÍNIMO (IGUAL AO WHATS)
+        let totalBruto = 0;
+        Object.values(cart).forEach(item => totalBruto += (item.basePrice * item.emb * item.qty));
+
+        if (totalBruto < 1600) {
+            alert(`⚠️ PEDIDO MÍNIMO NÃO ATINGIDO!\n\nValor Atual: ${formatCurrency(totalBruto)}\nMínimo Exigido: R$ 1.600,00`);
             return;
         }
     }
@@ -409,9 +499,26 @@ function resetForm() {
             input.dispatchEvent(new Event('input')); 
         });
         cart = {};
+        currentDiscountPercent = 0;
+        document.querySelectorAll('.old-price').forEach(el => el.classList.remove('visible'));
+        document.querySelectorAll('.new-price').forEach(el => {
+            el.classList.remove('discounted');
+            const row = el.closest('tr');
+            if(row) el.innerText = formatCurrency(parseFloat(row.getAttribute('data-price')));
+        });
+
         recalculateTotals();
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         document.getElementById('searchInput').value = '';
         filterProducts(); 
+    }
+}
+
+function toggleCategory(catId) {
+    const container = document.getElementById(`table-container-${catId}`);
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
     }
 }
